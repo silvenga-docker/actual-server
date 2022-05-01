@@ -1,0 +1,35 @@
+name: "Build"
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+  schedule:
+    # Random time each week.
+    - cron:  '34 6 * * 2'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      VENDOR: ./vendor
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/checkout@v2
+      with:
+        repository: actualbudget/actual-server
+        path: ${{ env.VENDOR }}
+    - name: Setup Actual Server Hash
+      shell: pwsh
+      run: |
+        $version = (git rev-parse --short=10 HEAD)
+        echo "ACTUAL_HASH=$version" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf-8 -Append
+      working-directory: ${{ env.VENDOR }}
+    - uses: silvenga-docker/build-image@latest
+      with:
+        dockerRegistery: ghcr.io
+        dockerUserName: ${{ secrets.GHCR_USER }}
+        dockerPassword: ${{ secrets.GHCR_PAT }}
+        dockerImageName: ${{ github.repository }}
+        dockerTags: latest,actual-${{ env.ACTUAL_HASH }}
+        workingPath: ${{ env.VENDOR }}
